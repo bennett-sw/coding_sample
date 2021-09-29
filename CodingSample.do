@@ -10,7 +10,8 @@ cls
 clear all
 program drop _all
 set more off
-
+// URGENT TODO: Make sure that this code doesn't change anything in dropbox or 
+// drive or anything like that. It can import files, but need to not change stuff
 // Section 1: Defining Paths
 
 // Section 1.0: User, dropbox, and auxiliary paths
@@ -239,10 +240,8 @@ cleaner
 // check the original .do file on git to see if reshaper is used? 
 // I think it was called 'behavioral parser'
 //reshaper 
-/*
-Variables of importance: Public goods: contributions, Trust: send, send back, Corruption: citizen_choice_scenario_num, asked amount, IAT: iat_score, iat_feedback, big five: the five personality characteristics.
-*/
+
 
 //deleting aux_data
-//!rmdir "$aux_path" /s /q
+!rmdir "$aux_path" /s /q
 
