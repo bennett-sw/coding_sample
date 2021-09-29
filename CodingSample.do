@@ -1,19 +1,25 @@
 /*
  TODO: Give description of what this .do file does, as well as what input this 
  .do file takes, and what output this gives. 
+ TODO: Set up sections; for example, Section 0: 
 */
 ** Author: Bennett Smith-Worthington
 
+// Section 0: Setting up Stata
 cls
 clear all
 program drop _all
 set more off
-global path "/Users/bennettsw" // Change your path 
+
+// Section 1: Defining Paths
+
+// Section 1.0: User, dropbox, and auxiliary paths
+global path "/Users/bennettsw" // Bennett's path 
 //global path "D:" // Marco's path
 global dbox "$path/Dropbox/PeruContraloria/Data/Denuncias"
-global aux_path "$path/aux_data" //"Local" folder for aux data
+global aux_path "$path/aux_data" // "Local" folder for aux data
 
-//defining input paths
+// Section 1.1: Input paths
 global in_path "$dbox/in"
 global complaints_learning "$in_path/ComplaintsLearning"
 global page_times_path "$complaints_learning/PageTimes"
@@ -22,25 +28,24 @@ global first_round "$app_wide_path/First_round"
 global make_up "$app_wide_path/Makeup_sessions/fixed_files"
 global complaints_data "$complaints_learning/complaints_data"
 
-//defining output paths
+// Section 1.2: Output paths
 global out "$dbox/out"
-
-//global parsed_data "$out\Lab Experiment\Cleaned data\Parsed data"
 global parsed_data "$out/Lab Experiment/Cleaned data/Parsed data"
 local games "corruption iat_ethnicity iat payment_info public_goods trust big_five menu_app"
-//local first_round_file_names "all_apps_wide-2021-07-19 all_apps_wide-2021-07-19_0 all_apps_wide-2021-07-20 all_apps_wide-2021-07-20_0 all_apps_wide-2021-07-21 games_all_apps_wide-2021-07-21_0 all_apps_wide-2021-07-22 all_apps_wide-2021-07-22_0"
-//local make_up_file_names "all_apps_wide-2021-08-06_0 all_apps_wide-2021-08-06 all_apps_wide-2021-08-09_0 all_apps_wide-2021-08-09 all_apps_wide-2021-08-10_0 all_apps_wide-2021-08-11_0 all_apps_wide-2021-08-11_1 all_apps_wide-2021-08-11_2 all_apps_wide-2021-08-11-MarcoSlack all_apps_wide-2021-08-11_3"
 
-//setting up directory
+// Section 1.3: Setting up auxiliary directory and path 
 cap mkdir "$aux_path" 
 cd "$aux_path"
 
 /*
-Program Section
+Section 2: Programs 
 */
 
+// TODO: Add decsription of each program. Follow the format given by Marco's 
+// tables_and_plots.do; put input and output as well (a la Marco)
 // This program reshapes the data from wide to long. First, it changes names of variables
 // then it reshapes them accordingly 
+
 program reshaper
 	foreach game of local games {
 				import delimited "$aux_path/parsed_results_`game'", encoding(UTF-8) colrange(1:1000) clear 
@@ -54,6 +59,7 @@ program reshaper
 			export delimited using "$aux_path/parsed_results_`game'", replace 
 	}
 end
+
 
 // This program removes the name of the game in a variable so that each sheet is displayed more cleanly 
 program cleaner 
@@ -71,6 +77,13 @@ program cleaner
 end
 
 
+/*
+Section 3: TODO: Give a name to this section that describes what the code within
+the section does 
+*/
+
+// Explain what this code does, and why I use python instead of stata. Give the 
+// reason why I use python instead of stata (max 1 line)
 python:
 from sfi import Macro
 from os import listdir
@@ -110,41 +123,50 @@ Macro.setLocal("num_total_files", str(num_total_files))
 # storing iterable paths as stata global
 Macro.setGlobal("round_paths", first_round + " " + make_up)
 end
-// make_up_round 
 
 
+// Section 4: TODO: Give this a name 
+// Need to document this well, given that there are multiple nested loops. 
+// Be concise! 
+// First, give a single line explanation of what this code block does 
 local path_counter = 1
-foreach path of global round_paths {
-	local counter = 1
+// Say what this loop iterates over 
+foreach path of global round_paths { // Or put the comment here 
 	
+	local counter = 1
+	// Say what this if/else statement does/means 
 	if `path_counter' == 1 {
 		global apps_wide_files $first_round_files
 	}
 	else {
 	    global apps_wide_files $make_up_files
 	}
-	foreach file of global apps_wide_files {		
+	// Say what this loop does/ what it iterates over 
+	foreach file of global apps_wide_files { // again, could be here 
+		
+		
 		//importing and parsing the apps_wide_files 
 		import delimited "`path'/`file'", encoding(UTF-8) colrange(1:1000) clear
-		
-		local file_counter = `counter'+(`path_counter'-1)*`num_first_round_files'
-		rename participant*label participant_label
-		rename participant*code participant_code
-		rename sessioncode session_code
-		tostring(participant_label), replace
-		tostring(session_code), replace
+			
+			local file_counter = `counter'+(`path_counter'-1)*`num_first_round_files'
+			rename participant*label participant_label
+			rename participant*code participant_code
+			rename sessioncode session_code
+			tostring(participant_label), replace
+			tostring(session_code), replace
 
-		
-		local file_counter = `counter'+(`path_counter'-1)*`num_first_round_files'
-		save "$aux_path/data_`file_counter'", replace
-		if `file_counter' == 15 export delimited "$aux_path/data_`file_counter'", replace
-		local ++counter
+			// Line that explains what this block does
+			local file_counter = `counter'+(`path_counter'-1)*`num_first_round_files'
+			save "$aux_path/data_`file_counter'", replace
+			if `file_counter' == 15 export delimited "$aux_path/data_`file_counter'", replace
+			local ++counter
 	}
-	local ++path_counter
+	local ++path_counter // brief explanation of why we increment this path_counter
 }
 
 local --counter // since the counter increases after the last file is imported
-
+// TODO: Rename the counters! They need names that accurately represent what
+// they store. 
 
 // Append loop, as it appeared before: 
 // ** Append loop
@@ -172,39 +194,14 @@ export delimited "$aux_path/data_1", replace
 
 
 
-
-** Importing apps_wide data loop
-// * Importing two files from each day of experiments and naming them sequentially
-// as data_1, data_2, data_3,...
-/*local counter = 1
-foreach file of local file_names {
-	import delimited "$apps_path/`file'.csv", encoding(UTF-8) colrange(1:1500) clear
-	rename participant*label participant_label
-	rename participant*code participant_code
-	rename sessioncode session_code
-	tostring(participant_label), replace
-	save data_`counter', replace
-	local ++counter
-}
-
-** Note that the append loop will need to start from the second index 
-
-local --counter // since the counter increases after the last file is imported
-
-// ** Append loop
-forvalues index = 2 (1) `counter' {
-	use data_1 
-	append using data_`index', force
-	save data_1, replace	
-}	
-//use data_1, clear 
-//duplicates report
-*/
 // Keeping variables of importance in each game 
 foreach game of local games {
 	preserve
 		use data_1, clear
-		
+		// TODO: create a global with the variables that are present in every 
+		// game's database, like participant_code participant_label; then 
+		// replace the variables with the global ($participant_identifiers) in each call. 
+		global participant_indentifiers participant_code participant_label
 		// Keeping relevant variables depending on the game we're looking at
 		if "`game'" == "corruption" keep(participant_code participant_label corruption*playercitizen_choice_ corruption*playerasked_amount session_code)
 		if "`game'"== "iat_ethnicity" keep(participant_code participant_label session_code iat_ethnicity*playeriat_score iat_ethnicity*playeriat_feedback)  // Need to ask what variables to keep here
@@ -237,9 +234,10 @@ foreach game of local games {
 		export delimited using "$aux_path/parsed_results_`game'", replace 
 	restore
 	}
-	
+// remind the reader of what this code does again (the program below)
 cleaner 
-
+// check the original .do file on git to see if reshaper is used? 
+// I think it was called 'behavioral parser'
 //reshaper 
 /*
 Variables of importance: Public goods: contributions, Trust: send, send back, Corruption: citizen_choice_scenario_num, asked amount, IAT: iat_score, iat_feedback, big five: the five personality characteristics.
