@@ -44,10 +44,18 @@ Section 2: Programs
 
 // TODO: Add decsription of each program. Follow the format given by Marco's 
 // tables_and_plots.do; put input and output as well (a la Marco)
-// This program reshapes the data from wide to long. First, it changes names of variables
-// then it reshapes them accordingly 
 
-program reshaper
+program renamer
+	/*
+	There are eight types of games; this program loads each game's parsed  
+	data separately and renames all variables that begin with the name of the 
+	game. Then, it overwrites the file in $aux_path (see globals)
+	
+	INPUT: parsed_results files of each game (8 files in total)
+	OUTPUT: edited parsed_results files of each game (8 files in total) 
+	*/
+// This program removes the name of the game in a variable so that each sheet is displayed more cleanly 
+
 	foreach game of local games {
 				import delimited "$aux_path/parsed_results_`game'", encoding(UTF-8) colrange(1:1000) clear 
 				
@@ -62,29 +70,19 @@ program reshaper
 end
 
 
-// This program removes the name of the game in a variable so that each sheet is displayed more cleanly 
-program cleaner 
-		
-		// dropping no responses for menu app
-		use "$aux_path/parsed_results_menu_app", clear 
-		drop if missing(menu_app1playercourse_choice) 	
-		export delimited "$aux_path/parsed_results_menu_app", replace 
-		
-		// dropping no responses for payment info
-		use "$aux_path/parsed_results_payment_info", clear 
-		drop if missing(payment_info1playercourse_choice) 	
-		export delimited "$aux_path/parsed_results_payment_info", replace 
-
-end
 
 
 /*
-Section 3: TODO: Give a name to this section that describes what the code within
-the section does 
+Section 3: File name aggregator
 */
+/*
+Since the experiment has multiple rounds, and data from each round is kept in a 
+round-specific folder, it is necesssary to aggregate all the file names so that
+this file can iterate over all of them later. This chunk of python gets the file
+names and puts them into globals. This process is very easily achieved in Python
+which is why I use it instead of Stata code. 
+*/ 
 
-// Explain what this code does, and why I use python instead of stata. Give the 
-// reason why I use python instead of stata (max 1 line)
 python:
 from sfi import Macro
 from os import listdir
@@ -169,28 +167,19 @@ local --counter // since the counter increases after the last file is imported
 // TODO: Rename the counters! They need names that accurately represent what
 // they store. 
 
-// Append loop, as it appeared before: 
-// ** Append loop
-forvalues index = 2 (1) `file_counter' {
+// Section 5: Append
+// After generating data_1, data_2, ... , data_8, I put them all into data_1
+
+
+// recall that 
+forvalues index = 2 (1) `file_counter' { 
+	// Recall that `file_counter' := how many `data_' files were generated  
 	use "$aux_path/data_1" 
 	append using "$aux_path/data_`index'", force
 	save "$aux_path/data_1", replace	
 }	
 
 export delimited "$aux_path/data_1", replace
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -219,28 +208,14 @@ foreach game of local games {
 		// So, this is dropping participants that are actually supervisors in non-interactive games
 		drop if ("`game'" == "iat" | "`game'" == "iat_ethnicity" | "`game'" == "payment_info" | "`game'" == "big_five") & (participant_label == "label_1" | participant_label == "label_2" | participant_label == "label_3" | participant_label == "label_4")
 		
-		/* KEEP THIS COMMENTED FOR NOW SO THAT IT CAN BE EDITED LATER
 		
-		// Renaming bigfive to big_five
-		if "`game'" == "big_five" rename bigfive* big_five* 
-		
-		
-		
-		// removing 'player' from name of each variable name in corruption game
-		if "`game'" == "corruption" | "`game'" == "public_goods" rename *player* **
-		if "`game'" == "iat_ethnicity" rename *1playeriat* **
-		*/
-		// Saving and exporting parsed results to csv with name of game in file name
 		save "$aux_path/parsed_results_`game'", replace 
 		export delimited using "$aux_path/parsed_results_`game'", replace 
 	restore
 	}
-// remind the reader of what this code does again (the program below)
-cleaner 
-// check the original .do file on git to see if reshaper is used? 
+ 
 // I think it was called 'behavioral parser'
-//reshaper 
-
+renamer
 
 //deleting aux_data
 !rmdir "$aux_path" /s /q
