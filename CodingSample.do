@@ -38,6 +38,9 @@ local games "corruption iat_ethnicity iat payment_info public_goods trust big_fi
 cap mkdir "$aux_path" 
 cd "$aux_path"
 
+// Section 1.4: Globals for game variables (see last section)
+
+
 /*
 Section 2: Programs 
 */
@@ -124,56 +127,56 @@ Macro.setGlobal("round_paths", first_round + " " + make_up)
 end
 
 
-// Section 4: TODO: Give this a name 
-// Need to document this well, given that there are multiple nested loops. 
-// Be concise! 
-// First, give a single line explanation of what this code block does 
+// Section 4: Extracting & Saving Files from Both Rounds
+
+// Brief explanation: This code goes into the folder associated with each round
+// (first round and make-up round), loads a file of a particular session, cleans
+// it, then saves it with the name: "data_`session_number'", where file counter
+// is the session number  
 local path_counter = 1
 // Say what this loop iterates over 
-foreach path of global round_paths { // Or put the comment here 
+foreach path of global round_paths { // iterating over each round's folder 
 	
 	local counter = 1
-	// Say what this if/else statement does/means 
+	// if path_counter is 1 -> process round 1 files; else -> process make-up
+	// round files
 	if `path_counter' == 1 {
 		global apps_wide_files $first_round_files
 	}
 	else {
 	    global apps_wide_files $make_up_files
 	}
-	// Say what this loop does/ what it iterates over 
-	foreach file of global apps_wide_files { // again, could be here 
+	// Loop below removes odd punctuation between key variables; cleans other
+	// variable names
+	so that they all have 
+	foreach file of global apps_wide_files { // looping over relevant folder
 		
-		
-		//importing and parsing the apps_wide_files 
+		//importing and cleaning the apps_wide_files 
 		import delimited "`path'/`file'", encoding(UTF-8) colrange(1:1000) clear
 			
-			local file_counter = `counter'+(`path_counter'-1)*`num_first_round_files'
+			local session_number = `counter'+(`path_counter'-1)*`num_first_round_files'
 			rename participant*label participant_label
 			rename participant*code participant_code
 			rename sessioncode session_code
 			tostring(participant_label), replace
 			tostring(session_code), replace
 
-			// Line that explains what this block does
-			local file_counter = `counter'+(`path_counter'-1)*`num_first_round_files'
-			save "$aux_path/data_`file_counter'", replace
-			if `file_counter' == 15 export delimited "$aux_path/data_`file_counter'", replace
+			// Creates var that counts number of files processed, then 
+			// saves the file with that number at the end
+			local session_number = `counter'+(`path_counter'-1)*`num_first_round_files'
+			save "$aux_path/data_`session_number'", replace
 			local ++counter
 	}
-	local ++path_counter // brief explanation of why we increment this path_counter
+	local ++path_counter // once done with first folder, need to move to second
 }
 
 local --counter // since the counter increases after the last file is imported
-// TODO: Rename the counters! They need names that accurately represent what
-// they store. 
-
-// Section 5: Append
-// After generating data_1, data_2, ... , data_8, I put them all into data_1
 
 
-// recall that 
-forvalues index = 2 (1) `file_counter' { 
-	// Recall that `file_counter' := how many `data_' files were generated  
+// After generating data_1, data_2, ... , data_8, putting them all into data_1:
+
+forvalues index = 2 (1) `session_number' { 
+	// `session_number' ends last loop as how many `data_' files were generated  
 	use "$aux_path/data_1" 
 	append using "$aux_path/data_`index'", force
 	save "$aux_path/data_1", replace	
@@ -194,18 +197,19 @@ foreach game of local games {
 		global participant_indentifiers participant_code participant_label
 		// Keeping relevant variables depending on the game we're looking at
 		if "`game'" == "corruption" keep(participant_code participant_label corruption*playercitizen_choice_ corruption*playerasked_amount session_code)
-		if "`game'"== "iat_ethnicity" keep(participant_code participant_label session_code iat_ethnicity*playeriat_score iat_ethnicity*playeriat_feedback)  // Need to ask what variables to keep here
+		if "`game'"== "iat_ethnicity" keep(participant_code participant_label session_code iat_ethnicity*playeriat_score iat_ethnicity*playeriat_feedback)  
 		if "`game'" == "iat" keep(participant_code participant_label session_code iat*playeriat_score iat*playeriat_feedback)
 		if "`game'" ==  "payment_info" keep(participant_code participant_label session_code payment_info*playercourse_choice)
 		if "`game'" == "public_goods" keep(participant_code participant_label session_code public_goods*player*contribution)
 		if "`game'" == "trust" keep(participant_code participant_label session_code trust*group*sent_amount trust*group*sent_back_amount) 
 		if "`game'" == "big_five" keep(participant_code participant_label session_code bigfive*player*extraversion bigfive*player*agreeableness bigfive*player*conscientiousness bigfive*player*neuroticism bigfive*player*openness)
 		
-		// TODO: add section on menu game, i just dont know which var we want here: 
 		if "`game'" == "menu_app" keep(participant_code participant_label session_code *course_choice)
 		
-		// If a participant_label = "label_" and some number, that means that it was a supervisor playing
-		// So, this is dropping participants that are actually supervisors in non-interactive games
+		/* If a participant_label = "label_" and some number, that means that 
+		it was a supervisor playing. So, this is dropping participants that are 
+		actually supervisors in solo games */
+	 
 		drop if ("`game'" == "iat" | "`game'" == "iat_ethnicity" | "`game'" == "payment_info" | "`game'" == "big_five") & (participant_label == "label_1" | participant_label == "label_2" | participant_label == "label_3" | participant_label == "label_4")
 		
 		
@@ -214,7 +218,6 @@ foreach game of local games {
 	restore
 	}
  
-// I think it was called 'behavioral parser'
 renamer
 
 //deleting aux_data
