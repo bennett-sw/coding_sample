@@ -1,7 +1,9 @@
 /*
- TODO: Give description of what this .do file does, as well as what input this 
- .do file takes, and what output this gives. 
- TODO: Set up sections; for example, Section 0: 
+This .do file iterates over all of the experimental sessions' files, cleans, 
+and saves them. 
+This .do file deals separately with cross-game data per session vs. 
+cross-session data for a single game. For complicated SQL reasons, having both
+formats is preferable for later analysis.
 */
 ** Author: Bennett Smith-Worthington
 
@@ -10,13 +12,12 @@ cls
 clear all
 program drop _all
 set more off
-// URGENT TODO: Make sure that this code doesn't change anything in dropbox or 
-// drive or anything like that. It can import files, but need to not change stuff
-// Section 1: Defining Paths
+/*
+Section 1: Defining Paths
+*/
 
 // Section 1.0: User, dropbox, and auxiliary paths
 global path "/Users/bennettsw" // Bennett's path 
-//global path "D:" // Marco's path
 global dbox "$path/Dropbox/PeruContraloria/Data/Denuncias"
 global aux_path "$path/aux_data" // "Local" folder for aux data
 
@@ -38,29 +39,38 @@ local games "corruption iat_ethnicity iat payment_info public_goods trust big_fi
 cap mkdir "$aux_path" 
 cd "$aux_path"
 
-// Section 1.4: Globals for game variables (see last section)
-
-
+// Section 1.4: Declaring globals for games' relevant variables
+// participant_indentifiers is a global of variables common to every game
+global participant_indentifiers participant_code participant_label session_code
+// Structure of game-specific globals: `game'_relevant_vars; these are globals
+// that we'll use in 
+global corruption_relevant_vars corruption*playercitizen_choice_ corruption*playerasked_amount
+global iat_ethnicity_relevant_vars iat_ethnicity*playeriat_score iat_ethnicity*playeriat_feedback
+global iat_relevant_vars iat*playeriat_score iat*playeriat_feedback
+global payment_info_relevant_vars payment_info*playercourse_choice
+global public_goods_relevant_vars public_goods*player*contribution
+global trust_relevant_vars trust*group*sent_amount trust*group*sent_back_amount
+global big_five_relevant_vars bigfive*player*extraversion bigfive*player*agreeableness bigfive*player*conscientiousness bigfive*player*neuroticism bigfive*player*openness
+global menu_app_relevant_vars *course_choice
 /*
 Section 2: Programs 
-*/
-
-// TODO: Add decsription of each program. Follow the format given by Marco's 
-// tables_and_plots.do; put input and output as well (a la Marco)
-
+*/s
+// Note this program is the last thing called in the .do file, so it refers to
+// content introduced in Section 4
 program renamer
 	/*
+	Description: 
 	There are eight types of games; this program loads each game's parsed  
-	data separately and renames all variables that begin with the name of the 
-	game. Then, it overwrites the file in $aux_path (see globals)
+	data separately and removes the name of the game in a variable so that each 
+	sheet is displayed more cleanly. Then, it overwrites the file in 
+	$aux_path (see globals).
 	
-	INPUT: parsed_results files of each game (8 files in total)
-	OUTPUT: edited parsed_results files of each game (8 files in total) 
+	INPUT: `parsed_results' files of each game (8 files in total)
+	OUTPUT: cleaned `parsed_results' files of each game (8 files in total) 
 	*/
-// This program removes the name of the game in a variable so that each sheet is displayed more cleanly 
 
 	foreach game of local games {
-				import delimited "$aux_path/parsed_results_`game'", encoding(UTF-8) colrange(1:1000) clear 
+				import delimited "$aux_path/parsed_results_`game'", encoding(UTF-8) clear 
 				
 				// Adding round number to the end of the variable 
 				rename `game'* `game'*#, addnumber
@@ -81,7 +91,7 @@ Section 3: File name aggregator
 /*
 Since the experiment has multiple rounds, and data from each round is kept in a 
 round-specific folder, it is necesssary to aggregate all the file names so that
-this file can iterate over all of them later. This chunk of python gets the file
+this .do can iterate over all of them later. This chunk of python gets the file
 names and puts them into globals. This process is very easily achieved in Python
 which is why I use it instead of Stata code. 
 */ 
@@ -126,15 +136,20 @@ Macro.setLocal("num_total_files", str(num_total_files))
 Macro.setGlobal("round_paths", first_round + " " + make_up)
 end
 
+/*
+ Section 4: Extracting & Saving Files from Both Rounds
+*/
+/*
+This code goes into the folder associated with each round
+(first round and make-up round), loads a file of a particular session, cleans
+it, then saves it with the name: "data_`session_number'", where file counter
+is the session number  
+*/
 
-// Section 4: Extracting & Saving Files from Both Rounds
+// Section 4.1: Saving individual files
 
-// Brief explanation: This code goes into the folder associated with each round
-// (first round and make-up round), loads a file of a particular session, cleans
-// it, then saves it with the name: "data_`session_number'", where file counter
-// is the session number  
 local path_counter = 1
-// Say what this loop iterates over 
+
 foreach path of global round_paths { // iterating over each round's folder 
 	
 	local counter = 1
@@ -147,14 +162,14 @@ foreach path of global round_paths { // iterating over each round's folder
 	    global apps_wide_files $make_up_files
 	}
 	// Loop below removes odd punctuation between key variables; cleans other
-	// variable names
-	so that they all have 
+	// variable names, giving us standard variable names across files
 	foreach file of global apps_wide_files { // looping over relevant folder
 		
 		//importing and cleaning the apps_wide_files 
 		import delimited "`path'/`file'", encoding(UTF-8) colrange(1:1000) clear
 			
 			local session_number = `counter'+(`path_counter'-1)*`num_first_round_files'
+			// removing punctuation from key variables
 			rename participant*label participant_label
 			rename participant*code participant_code
 			rename sessioncode session_code
@@ -172,8 +187,11 @@ foreach path of global round_paths { // iterating over each round's folder
 
 local --counter // since the counter increases after the last file is imported
 
+// Section 4.2: Combining individual files into one: data_1
 
-// After generating data_1, data_2, ... , data_8, putting them all into data_1:
+
+// After generating data_1, data_2, ..., data_`session_number' 
+// this puts them all into data_1:
 
 forvalues index = 2 (1) `session_number' { 
 	// `session_number' ends last loop as how many `data_' files were generated  
@@ -182,42 +200,26 @@ forvalues index = 2 (1) `session_number' {
 	save "$aux_path/data_1", replace	
 }	
 
-export delimited "$aux_path/data_1", replace
 
+// Section 4.3: Creating parsed_results files
 
-
-
-// Keeping variables of importance in each game 
 foreach game of local games {
+	// preserving/restoring so we can keep using data_1 again and again 
 	preserve
 		use data_1, clear
-		// TODO: create a global with the variables that are present in every 
-		// game's database, like participant_code participant_label; then 
-		// replace the variables with the global ($participant_identifiers) in each call. 
-		global participant_indentifiers participant_code participant_label
-		// Keeping relevant variables depending on the game we're looking at
-		if "`game'" == "corruption" keep(participant_code participant_label corruption*playercitizen_choice_ corruption*playerasked_amount session_code)
-		if "`game'"== "iat_ethnicity" keep(participant_code participant_label session_code iat_ethnicity*playeriat_score iat_ethnicity*playeriat_feedback)  
-		if "`game'" == "iat" keep(participant_code participant_label session_code iat*playeriat_score iat*playeriat_feedback)
-		if "`game'" ==  "payment_info" keep(participant_code participant_label session_code payment_info*playercourse_choice)
-		if "`game'" == "public_goods" keep(participant_code participant_label session_code public_goods*player*contribution)
-		if "`game'" == "trust" keep(participant_code participant_label session_code trust*group*sent_amount trust*group*sent_back_amount) 
-		if "`game'" == "big_five" keep(participant_code participant_label session_code bigfive*player*extraversion bigfive*player*agreeableness bigfive*player*conscientiousness bigfive*player*neuroticism bigfive*player*openness)
-		
-		if "`game'" == "menu_app" keep(participant_code participant_label session_code *course_choice)
+		// keeping relevant vars for each game 
+		keep($participant_indentifiers $`game'_relevant_vars)
 		
 		/* If a participant_label = "label_" and some number, that means that 
 		it was a supervisor playing. So, this is dropping participants that are 
 		actually supervisors in solo games */
-	 
 		drop if ("`game'" == "iat" | "`game'" == "iat_ethnicity" | "`game'" == "payment_info" | "`game'" == "big_five") & (participant_label == "label_1" | participant_label == "label_2" | participant_label == "label_3" | participant_label == "label_4")
-		
-		
-		save "$aux_path/parsed_results_`game'", replace 
-		export delimited using "$aux_path/parsed_results_`game'", replace 
+		export excel "$aux_path/parsed_results_`game'", first(var) replace 
 	restore
 	}
- 
+
+// Finally, running program 'renamer' so that we can have non-redundant variable
+// names in each `parsed_results' file: 
 renamer
 
 //deleting aux_data
