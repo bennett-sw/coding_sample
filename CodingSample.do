@@ -43,7 +43,7 @@ cd "$aux_path"
 // participant_indentifiers is a global of variables common to every game
 global participant_indentifiers participant_code participant_label session_code
 // Structure of game-specific globals: `game'_relevant_vars; these are globals
-// that we'll use in 
+// that we'll use in Section 4.3
 global corruption_relevant_vars corruption*playercitizen_choice_ corruption*playerasked_amount
 global iat_ethnicity_relevant_vars iat_ethnicity*playeriat_score iat_ethnicity*playeriat_feedback
 global iat_relevant_vars iat*playeriat_score iat*playeriat_feedback
