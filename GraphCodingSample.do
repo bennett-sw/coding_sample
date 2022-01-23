@@ -1,4 +1,5 @@
 // Analysis of Wealth Inequality by Race, Education, and Age
+// Author: Bennett Smith-Worthington, Columbia University 
 // Date: Oct. 26, 2021
 clear all
 use RA_21_22
@@ -15,20 +16,20 @@ SECTION 1: Key trends in median total wealth over the last 30 years by race and 
 */
 
 preserve
-	// generating total_wealth var, as defined in task 
+	// generating total_wealth var: = assets-debt
 	gen total_wealth = (asset_total - debt_total) // unweighted total wealth
 	egen med_wealth = median(total_wealth), by(year race education)
-	// TODO: Check if this collapse command is redundant given the above lines
 	collapse med_wealth, by(year race education)
 	sort year 
 
-// Plot: categorizes by both race and education
-	/* key: 
-			lpattern: solid line := college degree, longdash_dot := some college
-			dotted line := no college
-			lcolor: Hispanic := dkgreen, white := blue, black := red
-	
-*/
+	// Graphing total_wealth by racial and educational categories
+	// Plot 1: Median Wealth by Race and Education
+		/* key: 
+				lpattern: solid line := college degree, longdash_dot := some college
+				dotted line := no college
+				lcolor: Hispanic := dkgreen, white := blue, black := red
+		
+	*/
 
 	twoway (line med_wealth year if race == "black" & education == "no college", lcolor(red) lwidth(medthick) lpattern(dash))  ///
 		(line med_wealth year if race == "black" & education == "some college", lcolor(red) lwidth(medthick) lpattern(longdash_dot))  ///
@@ -39,35 +40,35 @@ preserve
 		(line med_wealth year if race == "white" & education == "no college", lcolor(blue) lwidth(medthick) lpattern(dash))  ///
 		(line med_wealth year if race == "white" & education == "some college", lcolor(blue) lwidth(medthick) lpattern(longdash_dot)) ///
 		(line med_wealth year if race == "white" & education == "college degree", lcolor(blue) lwidth(medthick) lpattern(solid) title(Median Wealth by Race and Education 1989-2016) ytitle(Median Wealth (2016 `$')) xtitle(Year) legend(order(1 "Black, No college" 2 "Black, Some college" 3 "Black, College degree" 4 "Hispanic, No college" 5 "Hispanic, Some college" 6 "Hispanic, College degree" 7 "White, No college" 8 "White, Some college" 9 "White, College degree")) )
-		// TODO: Need to add 'other' category
-// saving graph
-	graph save booth_graph1, replace
+	// saving graph
+	graph save inequality_graph1, replace
 
 restore
 
 /*
-SECTION 2
+SECTION 2: Inequality between Black and white people
 */
 preserve
 	keep if race == "black" | race == "white"
 	gen housing_wealth = asset_housing - debt_housing
 	collapse (median) housing_wealth, by(race year education)
-	//egen med_housing_wealth = median(housing_wealth), by(year race education)
-
-// Plot 2: median housing wealth for black and white households
+	// Only looking at median housing wealth for Black/white households by 
+	// levels of educational attainment
+	// Plot 2: median housing wealth for black and white households
 	twoway (line housing_wealth year if race == "black" & education == "no college", lcolor(red) lwidth(medthick) lpattern(dash))  ///
 	(line housing_wealth year if race == "black" & education == "some college", lcolor(red) lwidth(medthick) lpattern(longdash_dot))  ///
 	(line housing_wealth year if race == "black" & education == "college degree", lcolor(red) lwidth(medthick) lpattern(solid))  /// 
 	(line housing_wealth year if race == "white" & education == "no college", lcolor(blue) lwidth(medthick) lpattern(dash)) ///
 	(line housing_wealth year if race == "white" & education == "some college", lcolor(blue) lwidth(medthick) lpattern(longdash_dot)) ///
 	(line housing_wealth year if race == "white" & education == "college degree", lcolor(blue) lwidth(medthick) lpattern(solid) title(Median Housing Wealth for Blacks/Whites by Education 1989-2016) ytitle(Median Housing Wealth (2016 `$')) xtitle(Year) legend(order(1 "Black, No college" 2 "Black, Some college" 3 "Black, College degree" 4 "White, No college" 5 "White, Some college" 6 "White, College degree")) )
-	graph save booth_graph2, replace
+	graph save inequality_graph2, replace
 
 restore
+
 /*
-SECTION 3
+SECTION 3: Analyzing wealth of Black/white people > 25 years old
 */
-//preserve
+preserve
 	keep if race == "black" | race == "white"
 	keep if age>=25
 	gen housing_wealth = asset_housing - debt_housing
@@ -79,25 +80,26 @@ SECTION 3
 	gen housing_wealth_change =  housing_wealth - housing_wealth_lag
 	gen housing_wealth_change_perc = 100*((housing_wealth - housing_wealth_lag)/housing_wealth_lag)
 
-// Plot 5: housing_wealth_change for black and white households over age of 25
+	// Plot 3: housing_wealth_change for black and white households over age of 25
 	twoway (line housing_wealth_change year if race == "black" & education == "no college", lcolor(red) lwidth(medthick) lpattern(dash))  ///
 		(line housing_wealth_change year if race == "black" & education == "some college", lcolor(red) lwidth(medthick) lpattern(longdash_dot))  ///
 		(line housing_wealth_change year if race == "black" & education == "college degree", lcolor(red) lwidth(medthick) lpattern(solid))  /// 
 		(line housing_wealth_change year if race == "white" & education == "no college", lcolor(blue) lwidth(medthick) lpattern(dash)) ///
 		(line housing_wealth_change year if race == "white" & education == "some college", lcolor(blue) lwidth(medthick) lpattern(longdash_dot)) ///
 		(line housing_wealth_change year if race == "white" & education == "college degree", lcolor(blue) lwidth(medthick) xline(2007) lpattern(solid) title(Median Housing Wealth Change for Blacks and Whites (Age>25) 1989-2016) ytitle(Median Housing Wealth (2016 Thousands of `$')) ylabel(#5) xtitle(Year) legend(order(1 "Black, No college" 2 "Black, Some college" 3 "Black, College degree" 4 "White, No college" 5 "White, Some college" 6 "White, College degree")) )
-		graph save booth_graph5, replace
-// Plot 3: median housing wealth for black and white households over age of 25
+		graph save inequality_graph5, replace
+		
+	// Plot 4: median housing wealth for black and white households over age of 25
 	twoway (line housing_wealth year if race == "black" & education == "no college", lcolor(red) lwidth(medthick) lpattern(dash))  ///
 	(line housing_wealth year if race == "black" & education == "some college", lcolor(red) lwidth(medthick) lpattern(longdash_dot))  ///
 	(line housing_wealth year if race == "black" & education == "college degree", lcolor(red) lwidth(medthick) lpattern(solid))  /// 
 	(line housing_wealth year if race == "white" & education == "no college", lcolor(blue) lwidth(medthick) lpattern(dash)) ///
 	(line housing_wealth year if race == "white" & education == "some college", lcolor(blue) lwidth(medthick) lpattern(longdash_dot)) ///
 	(line housing_wealth year if race == "white" & education == "college degree", lcolor(blue) lwidth(medthick) xline(2007) lpattern(solid) title(Median Housing Wealth for Blacks and Whites (Age>25) 1989-2016) ytitle(Median Housing Wealth (2016 `$')) xtitle(Year) legend(order(1 "Black, No college" 2 "Black, Some college" 3 "Black, College degree" 4 "White, No college" 5 "White, Some college" 6 "White, College degree")) )
-	graph save booth_graph3, replace
+	graph save inequality_graph3, replace
 	
-//restore
-	// Plot 4: median non-housing wealth for black and white households over age of 25
+restore
+	// Plot 5: median non-housing wealth for black and white households over age of 25
 preserve
 	keep if race == "black" | race == "white"
 	keep if age >= 25
